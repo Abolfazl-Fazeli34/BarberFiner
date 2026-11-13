@@ -1,20 +1,7 @@
 FROM php:8.3-apache
 
-# Install required PHP extensions
-RUN apt-get update && apt-get install -y \
-        libpng-dev \
-        libjpeg-dev \
-        libzip-dev \
-        zip \
-        unzip \
-        curl \
-    && docker-php-ext-install \
-        pdo \
-        pdo_mysql \
-        mysqli \
-        zip \
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/*
+# pdo, pdo_mysql, mysqli have all deps bundled in the base image — NO apt-get needed
+RUN docker-php-ext-install pdo pdo_mysql mysqli
 
 # Enable Apache modules
 RUN a2enmod rewrite headers expires
