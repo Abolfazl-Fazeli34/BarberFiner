@@ -1,0 +1,101 @@
+# ============================================================
+# BarberFiner - Docker Compose Configuration
+# Subdomain: barberfiner.ip3.ir
+# Port Range: 8680-8689 (Local access only)
+# ============================================================
+
+services:
+
+  # ── PHP + Apache Application ──────────────────────────────
+  app:
+    build:
+      context: ./docker/php
+      dockerfile: Dockerfile
+    container_name: barberfiner_app
+    restart: unless-stopped
+    environment:
+      DB_HOST: db
+      DB_NAME: ${DB_NAME:-barberfiner}
+      DB_USER: ${DB_USER:-barber_user}
+      DB_PASS: ${DB_PASS:-barber_pass_2024}
+    volumes:
+      - ./barber-finer:/var/www/html:ro
+      - uploads_data:/var/www/html/uploads
+      - php_logs:/var/log/php
+    networks:
+      - barberfiner_net
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:8680:80"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/index.php"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+
+  # ── MySQL Database ─────────────────────────────────────────
+  db:
+    image: mysql:8.0
+    container_name: barberfiner_db
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root_barber_2024}
+      MYSQL_DATABASE: ${DB_NAME:-barberfiner}
+      MYSQL_USER: ${DB_USER:-barber_user}
+      MYSQL_PASSWORD: ${DB_PASS:-barber_pass_2024}
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./barber-finer/database/schema.sql:/docker-entrypoint-initdb.d/01_schema.sql:ro
+    networks:
+      - barberfiner_net
+    ports:
+      - "127.0.0.1:8681:3306"
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD:-root_barber_2024}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    command: >
+      --character-set-server=utf8mb4
+      --collation-server=utf8mb4_unicode_ci
+      --default-authentication-plugin=caching_sha2_password
+      --max_allowed_packet=64M
+      --innodb_buffer_pool_size=128M
+
+  # ── phpMyAdmin ─────────────────────────────────────────────
+  phpmyadmin:
+    image: phpmyadmin:5
+    container_name: barberfiner_phpmyadmin
+    restart: unless-stopped
+    environment:
+      PMA_HOST: db
+      PMA_PORT: 3306
+      PMA_USER: root
+      PMA_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root_barber_2024}
+      UPLOAD_LIMIT: 64M
+    networks:
+      - barberfiner_net
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:8682:80"
+
+# ── Volumes ────────────────────────────────────────────────────
+volumes:
+  mysql_data:
+    name: barberfiner_mysql_data
+  php_logs:
+    name: barberfiner_php_logs
+  uploads_data:
+    name: barberfiner_uploads
+
+# ── Networks ───────────────────────────────────────────────────
+networks:
+  barberfiner_net:
+    name: barberfiner_network
+    driver: bridge

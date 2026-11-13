@@ -1,0 +1,16 @@
+.env
+*.env.local
+.DS_Store
+._*
+Thumbs.db
+*.swp
+*~
+.idea/
+.vscode/
+*.log
+logs/
+node_modules/
+vendor/
+*.cache
+barber-finer/uploads/*
+!barber-finer/uploads/.gitkeep
